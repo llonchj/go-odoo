@@ -48,20 +48,6 @@ func (c *Client) Login(dbName string, admin string, password string) error {
 	return err
 }
 
-func (c *Client) GetReport(model string, ids []int64) (map[string]interface{}, error) {
-	client, err := xmlrpc.NewClient(c.URI+"/xmlrpc/2/report", c.Transport)
-	if err != nil {
-		return nil, err
-	}
-	var report map[string]interface{}
-	reportService := NewIrActionsReportService(c)
-	fields, err := reportService.GetByField("model", model)
-	if err != nil {
-		return nil, err
-	}
-	return report, client.Call("render_report", []interface{}{c.Session.DbName, c.Session.UID, c.Session.Password, (*fields)[0].ReportName, ids}, &report)
-}
-
 func (c *Client) Create(model string, args []interface{}, elem interface{}) error {
 	return c.DoRequest("create", model, args, nil, elem)
 }
@@ -149,4 +135,21 @@ func (c *Client) update(model string, ids []int64, fields map[string]interface{}
 
 func (c *Client) delete(model string, ids []int64) error {
 	return c.Delete(model, []interface{}{ids})
+}
+
+func (c *Client) GetAllModels() ([]string, error) {
+	var content []map[string]interface{}
+	err := c.DoRequest("search_read", "ir.model", []interface{}{[]interface{}{}}, nil, &content)
+	if err != nil {
+		return []string{}, err
+	}
+	models := make([]string, len(content))
+	for i, modelFields := range content {
+		for field, model := range modelFields {
+			if field == "model" {
+				models[i] = model.(string)
+			}
+		}
+	}
+	return models, err
 }
